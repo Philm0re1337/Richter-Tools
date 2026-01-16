@@ -6,22 +6,13 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QIcon
 
-# HTML Content der Tools (vereinfacht als Strings hinterlegt für die Einzeldatei-Lösung)
-# In einer echten Umgebung könnten diese auch aus den .html Dateien gelesen werden.
-
-TOOL_PERSONALKOSTEN = """
-<!-- Hier wird der Inhalt von 'Personalkosten Richter.html' eingefügt -->
-"""
-
-TOOL_KER_ANALYSE = """
-<!-- Hier wird der Inhalt von 'KER Analyse Tool.html' eingefügt -->
-"""
-
 class RichterApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Richter Management Tools")
         self.resize(1280, 800)
+        
+        # Dark Mode Styling für die gesamte App
         self.setStyleSheet("background-color: #121212; color: #e5e7eb;")
 
         # Zentrales Widget und Layout
@@ -56,19 +47,19 @@ class RichterApp(QMainWindow):
             QPushButton[active="true"] {
                 background-color: #2d2d2d;
                 color: #dc2626;
-                border-left: 3px solid #dc2626;
+                border-left: 4px solid #dc2626;
             }
         """)
         sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 20, 0, 0)
         sidebar_layout.setSpacing(5)
 
-        # Logo / Titel
+        # Titel / Logo Bereich
         title_label = QLabel("RICHTER TOOLS")
         title_label.setStyleSheet("color: #dc2626; font-size: 18px; font-weight: bold; padding: 20px;")
         sidebar_layout.addWidget(title_label)
 
-        # Navigation Buttons
+        # Buttons definieren
         self.btn_personal = QPushButton(" Personalkosten")
         self.btn_ker = QPushButton(" KER Analyse")
         
@@ -80,41 +71,53 @@ class RichterApp(QMainWindow):
 
         sidebar_layout.addStretch()
         
-        # Fußzeile Sidebar
-        version_label = QLabel("v1.0")
+        # Footer
+        version_label = QLabel("v1.0.1")
         version_label.setStyleSheet("color: #404040; padding: 10px;")
         version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sidebar_layout.addWidget(version_label)
 
         main_layout.addWidget(self.sidebar)
 
-        # --- Content Area (Stacked Widget) ---
+        # --- Content Bereich ---
         self.content_stack = QStackedWidget()
         
-        # Tool 1: Personalkosten
+        # View 1: Personalkosten
         self.web_personal = QWebEngineView()
         self.load_html_into_view(self.web_personal, "Personalkosten Richter.html")
         self.content_stack.addWidget(self.web_personal)
 
-        # Tool 2: KER Analyse
+        # View 2: KER Analyse
         self.web_ker = QWebEngineView()
         self.load_html_into_view(self.web_ker, "KER Analyse Tool.html")
         self.content_stack.addWidget(self.web_ker)
 
         main_layout.addWidget(self.content_stack)
         
-        # Initialer Status
+        # Ersten Button aktivieren
         self.set_active_button(self.btn_personal)
 
     def load_html_into_view(self, view, filename):
-        """Lädt die lokale HTML Datei in die Web-Ansicht."""
-        path = os.path.abspath(filename)
+        """Sucht die Datei im lokalen Pfad und lädt sie in die WebEngine."""
+        # Prüfen ob Datei im aktuellen Verzeichnis existiert
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(base_path, filename)
+        
         if os.path.exists(path):
             with open(path, 'r', encoding='utf-8') as f:
                 html = f.read()
             view.setHtml(html)
         else:
-            view.setHtml(f"<body style='background:#121212;color:white;display:flex;justify-content:center;align-items:center;height:100vh;'><h1>Datei '{filename}' nicht gefunden.</h1></body>")
+            # Platzhalter falls Datei fehlt
+            error_html = f"""
+            <body style='background:#121212; color:white; font-family:sans-serif; 
+                         display:flex; flex-direction:column; justify-content:center; 
+                         align-items:center; height:100vh;'>
+                <h2 style='color:#dc2626;'>Datei nicht gefunden</h2>
+                <p>Bitte stelle sicher, dass <b>{filename}</b> im selben Ordner wie die .py Datei liegt.</p>
+            </body>
+            """
+            view.setHtml(error_html)
 
     def display_tool(self):
         btn = self.sender()
