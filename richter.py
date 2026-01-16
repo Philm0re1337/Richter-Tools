@@ -17,8 +17,8 @@ st.markdown("""
         .block-container {
             padding-top: 0rem;
             padding-bottom: 0rem;
-            padding-left: 0rem;
-            padding-right: 0rem;
+            padding-left: 0.5rem; /* Minimaler Abstand zum Rand */
+            padding-right: 0.5rem;
             max-width: 100%;
         }
         
@@ -73,18 +73,22 @@ def main():
     )
     
     st.sidebar.markdown("---")
-    st.sidebar.info("v1.2.1 (Layout Fixed)")
+    st.sidebar.info("v1.2.2 (Zoom & Width Fixed)")
 
     # Content Bereich
     if selection == "Personalkosten":
         html_content = load_html("Personalkosten Richter.html")
         if html_content:
-            # Wir nutzen width=None, damit Streamlit die volle Breite der Spalte nutzt
-            # Das margin:0 und width:100% im div sorgt dafür, dass nichts abgeschnitten wird
+            # Wir nutzen transform: scale(0.95) um den Inhalt leicht zu verkleinern, 
+            # damit er in die Breite passt, ohne zu scrollen.
             components.html(
-                f"<div style='margin:0; padding:0; width:100%; overflow-x:auto;'>{html_content}</div>", 
+                f"""
+                <div style='margin:0; padding:0; width:100%; transform: scale(0.98); transform-origin: top left;'>
+                    {html_content}
+                </div>
+                """, 
                 height=1200, 
-                scrolling=True
+                scrolling=False # Scrollen auf App-Ebene deaktivieren, falls möglich
             )
         else:
             st.error("Datei 'Personalkosten Richter.html' nicht im Repository gefunden.")
@@ -93,9 +97,13 @@ def main():
         html_content = load_html("KER Analyse Tool.html")
         if html_content:
             components.html(
-                f"<div style='margin:0; padding:0; width:100%; overflow-x:auto;'>{html_content}</div>", 
+                f"""
+                <div style='margin:0; padding:0; width:100%; transform: scale(0.98); transform-origin: top left;'>
+                    {html_content}
+                </div>
+                """, 
                 height=1200, 
-                scrolling=True
+                scrolling=False
             )
         else:
             st.error("Datei 'KER Analyse Tool.html' nicht im Repository gefunden.")
