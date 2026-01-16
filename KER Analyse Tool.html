@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KER - Richter Einzelhandels oHG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #262626; /* Anthrazit Hintergrund */
+            color: #e5e7eb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .input-field {
+            text-align: right;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #404040;
+            background-color: #171717;
+            color: #ffffff;
+            width: 100%;
+            transition: all 0.2s;
+            font-family: monospace;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #dc2626; /* Rot Highlight */
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+        }
+        .row-total {
+            background-color: #333333;
+            font-weight: 600;
+        }
+        .row-result {
+            background-color: #450a0a; /* Dunkelrot für Ergebnis */
+            font-weight: 700;
+            font-size: 1.1rem;
+            border-left: 4px solid #dc2626;
+        }
+        .negative-val {
+            color: #f87171;
+        }
+        .readonly-val {
+            background-color: #262626;
+            color: #737373;
+            cursor: not-allowed;
+            border-style: dashed;
+        }
+        #drop-zone {
+            transition: all 0.3s ease;
+            border: 2px dashed #404040;
+        }
+        #drop-zone.dragover {
+            background-color: rgba(220, 38, 38, 0.1);
+            border-color: #dc2626;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #262626;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #525252;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-[#1f1f1f] shadow-2xl rounded-xl overflow-hidden border border-[#333333]">
+        <header class="bg-gradient-to-r from-[#171717] to-[#450a0a] p-6 border-b border-red-900/30">
+            <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                <span class="w-3 h-8 bg-red-600 rounded-full"></span>
+                KER - Richter Einzelhandels oHG
+            </h1>
+            <p class="text-neutral-400 text-sm mt-1">Kurzfristige Erfolgsrechnung mit editierbaren Daten</p>
+        </header>
+
+        <!-- Drag & Drop Bereich -->
+        <div id="drop-zone" class="m-6 p-8 rounded-lg text-center cursor-pointer hover:bg-[#262626]">
+            <div class="flex flex-col items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p class="text-neutral-300 font-medium">Ker-Analyse CSV aus Mandantenportal hierher ziehen oder klicken</p>
+                <input type="file" id="file-input" class="hidden" accept=".csv">
+            </div>
+        </div>
+
+        <div class="p-6 pt-0 overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b-2 border-[#404040]">
+                        <th class="py-3 px-4 font-semibold text-neutral-300">Bezeichnung</th>
+                        <th class="py-3 px-4 font-semibold text-neutral-300 text-right w-48">Betrag (€)</th>
+                        <th class="py-3 px-4 font-semibold text-neutral-300 text-right w-32">% v. Netto</th>
+                    </tr>
+                </thead>
+                <tbody id="ker-body">
+                    <!-- Inhalt wird per JS generiert -->
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="bg-[#171717]/50 p-6 border-t border-[#333333] flex justify-center items-center">
+            <p class="text-xs text-neutral-500 italic">
+                Richter Einzelhandels oHG • Optimierte Felderkennung
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        const initialData = [
+            { id: 'umsatzUSt', label: 'Umsatz incl USt', val: 0, type: 'input' },
+            { id: 'ust', label: 'Umsatzsteuer', val: 0, type: 'input' },
+            { id: 'nettoumsatz', label: 'Nettoumsatz', val: 0, type: 'calc', bold: true },
+            { id: 'aktionsabschriften', label: 'Aktionsabschriften', val: 0, type: 'input' },
+            { id: 'sonstigeAbschriften', label: 'Sonstige Abschriften', val: 0, type: 'input' },
+            { id: 'korrekturAbschriften', label: 'Korrektur Abschriften', val: 0, type: 'input' },
+            { id: 'wareneinsatz', label: 'Wareneinsatz', val: 0, type: 'input' },
+            { id: 'rohgewinn1', label: 'Rohgewinn I', val: 0, type: 'calc', bold: true },
+            { id: 'warenErtrag', label: 'Warenbezogene Erträge', val: 0, type: 'input' },
+            { id: 'inventurAbw', label: 'Inventurabweichung', val: 0, type: 'input' },
+            { id: 'bestandKorr', label: 'Bestandskorrekturen', val: 0, type: 'input' },
+            { id: 'inventurHoch', label: 'Inventur-Hochrechnung', val: 0, type: 'input' },
+            { id: 'bruchVerderb', label: 'Bruch, Verderb u.ähnliches', val: 0, type: 'input' },
+            { id: 'bezugskosten', label: 'Warenbezugskosten', val: 0, type: 'input' },
+            { id: 'rohgewinn2', label: 'Rohgewinn II', val: 0, type: 'calc', bold: true },
+            { id: 'mieteinnahmen', label: 'Mieteinnahmen', val: 0, type: 'input' },
+            { id: 'wkz', label: 'Werbekostenzuschüsse', val: 0, type: 'input' },
+            { id: 'sachbezuege', label: 'Stpfl. Sachbezüge', val: 0, type: 'input' },
+            { id: 'sonstErtrag', label: 'Sonstige betriebliche Erträge', val: 0, type: 'input' },
+            { id: 'beteiligung', label: 'Beteiligungserträge', val: 0, type: 'input' },
+            { id: 'zinsenErtrag', label: 'Zinserträge', val: 0, type: 'input' },
+            { id: 'betriebErtrag', label: 'Betrieblicher Ertrag', val: 0, type: 'calc', bold: true },
+            { id: 'personalkosten', label: 'Personalkosten', val: 0, type: 'input' },
+            { id: 'pacht', label: 'Pacht, Miete', val: 0, type: 'input' },
+            { id: 'energie', label: 'Heizung, Energie', val: 0, type: 'input' },
+            { id: 'raumkosten', label: 'Sonstige Raumkosten', val: 0, type: 'input' },
+            { id: 'reparaturen', label: 'Reparaturen, Wartung', val: 0, type: 'input' },
+            { id: 'werbung', label: 'Werbekosten', val: 0, type: 'input' },
+            { id: 'verpackung', label: 'Verpackungsmaterial', val: 0, type: 'input' },
+            { id: 'leasing', label: 'Leasing', val: 0, type: 'input' },
+            { id: 'gwg', label: 'GWG', val: 0, type: 'input' },
+            { id: 'afa', label: 'Abschreibungen', val: 0, type: 'input' },
+            { id: 'kfz', label: 'KFZ-Kosten', val: 0, type: 'input' },
+            { id: 'buchhaltung', label: 'Buchhaltung, Jahresabschluss', val: 0, type: 'input' },
+            { id: 'verwaltung', label: 'Sonstige Verwaltung', val: 0, type: 'input' },
+            { id: 'telefon', label: 'Telefon, Porto', val: 0, type: 'input' },
+            { id: 'versich', label: 'Beiträge, Versicherungen', val: 0, type: 'input' },
+            { id: 'sonstKosten', label: 'Sonstige Kosten', val: 0, type: 'input' },
+            { id: 'zinsenAufwand', label: 'Zinsen', val: 0, type: 'input' },
+            { id: 'geldverkehr', label: 'Kosten Geldverk.', val: 0, type: 'input' },
+            { id: 'fremdleistung', label: 'Fremdleistungen', val: 0, type: 'input' },
+            { id: 'betriebAufwand', label: 'Betrieblicher Aufwand', val: 0, type: 'calc', bold: true },
+            { id: 'ergebnis', label: 'Betriebsergebnis', val: 0, type: 'calc', bold: true, highlight: true }
+        ];
+
+        let currentData = JSON.parse(JSON.stringify(initialData));
+
+        function calculate() {
+            const getVal = (id) => currentData.find(d => d.id === id).val;
+            const setVal = (id, val) => {
+                const item = currentData.find(d => d.id === id);
+                if (item) item.val = val;
+            };
+
+            const brutto = getVal('umsatzUSt');
+            const ustVal = getVal('ust');
+            
+            const nettoumsatz = brutto - Math.abs(ustVal);
+            setVal('nettoumsatz', nettoumsatz);
+            
+            setVal('rohgewinn1', nettoumsatz - Math.abs(getVal('wareneinsatz')));
+
+            const rg2 = getVal('rohgewinn1') + getVal('warenErtrag') + getVal('inventurAbw') + getVal('bestandKorr') + getVal('inventurHoch') + getVal('bruchVerderb') + getVal('bezugskosten');
+            setVal('rohgewinn2', rg2);
+
+            const bErtrag = rg2 + getVal('mieteinnahmen') + getVal('wkz') + getVal('sachbezuege') + getVal('sonstErtrag') + getVal('beteiligung') + getVal('zinsenErtrag');
+            setVal('betriebErtrag', bErtrag);
+
+            const aufwandIds = ['personalkosten', 'pacht', 'energie', 'raumkosten', 'reparaturen', 'werbung', 'verpackung', 'leasing', 'gwg', 'afa', 'kfz', 'buchhaltung', 'verwaltung', 'telefon', 'versich', 'sonstKosten', 'zinsenAufwand', 'geldverkehr', 'fremdleistung'];
+            const sumAufwand = aufwandIds.reduce((acc, id) => acc + Math.abs(getVal(id)), 0);
+            setVal('betriebAufwand', sumAufwand);
+            setVal('ergebnis', bErtrag - sumAufwand);
+        }
+
+        function render() {
+            const tbody = document.getElementById('ker-body');
+            const nettoBasis = currentData.find(d => d.id === 'nettoumsatz').val || 1;
+            tbody.innerHTML = '';
+
+            currentData.forEach((item) => {
+                const row = document.createElement('tr');
+                row.className = `border-b border-[#333333] ${item.bold ? 'row-total' : ''} ${item.highlight ? 'row-result' : ''}`;
+                const percent = (item.val / nettoBasis * 100).toFixed(2);
+
+                let valCell = '';
+                if (item.type === 'input') {
+                    valCell = `<input type="number" step="0.01" class="input-field ${item.val < 0 ? 'negative-val' : ''}" value="${item.val.toFixed(2)}" onchange="updateByValue('${item.id}', this.value)">`;
+                } else if (item.type === 'readonly') {
+                    valCell = `<input type="text" class="input-field readonly-val ${item.val < 0 ? 'negative-val' : ''}" value="${item.val.toFixed(2)}" readonly>`;
+                } else {
+                    valCell = `<span class="block text-right pr-2 font-bold ${item.val < 0 ? 'negative-val' : ''}">${item.val.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
+                }
+
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-neutral-400 font-medium">${item.label}</td>
+                    <td class="py-3 px-4">${valCell}</td>
+                    <td class="py-3 px-4 text-right text-neutral-500 font-mono">${percent}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateByValue(id, newValue) {
+            const item = currentData.find(d => d.id === id);
+            if (item) {
+                item.val = parseFloat(newValue) || 0;
+                calculate();
+                render();
+            }
+        }
+
+        function processCSV(text) {
+            const lines = text.split(/\r?\n/);
+            const dataMap = {};
+            
+            lines.forEach(line => {
+                const parts = line.split(';');
+                if (parts.length >= 2) {
+                    const label = parts[0].trim().toLowerCase();
+                    
+                    // KORREKTUR: Nur wenn Spalte 2 wirklich LEER ist, nimm Spalte 4. 
+                    // Eine "0" ist ein gültiger Wert für das aktuelle Jahr.
+                    let rawVal = (parts[1] !== undefined && parts[1].trim() !== "") ? parts[1] : parts[3];
+                    
+                    const cleanVal = (v) => {
+                        if (v === undefined || v === null || v.trim() === "") return 0;
+                        // Entferne Tausenderpunkte, ersetze Komma durch Punkt
+                        let s = v.toString().trim().replace(/\./g, '').replace(',', '.');
+                        let n = parseFloat(s);
+                        return isNaN(n) ? 0 : n;
+                    };
+                    
+                    dataMap[label] = cleanVal(rawVal);
+                }
+            });
+
+            currentData.forEach(item => {
+                const searchLabel = item.label.toLowerCase();
+                
+                if (dataMap.hasOwnProperty(searchLabel)) {
+                    item.val = dataMap[searchLabel];
+                } else {
+                    const key = Object.keys(dataMap).find(k => k === searchLabel || k === searchLabel.replace(', ', ','));
+                    if (key) {
+                        item.val = dataMap[key];
+                    } else {
+                        const fuzzyKey = Object.keys(dataMap).find(k => k.includes(searchLabel) || searchLabel.includes(k));
+                        if (fuzzyKey) item.val = dataMap[fuzzyKey];
+                    }
+                }
+            });
+
+            calculate();
+            render();
+        }
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        };
+        fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => processCSV(e.target.result);
+            reader.readAsText(file);
+        }
+
+        window.onload = () => { calculate(); render(); };
+    </script>
+</body>
+</html>
