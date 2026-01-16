@@ -24,7 +24,7 @@ st.markdown("""
             background-color: #121212;
         }
     </style>
-""", unsafe_allow_name_allowed=True)
+""", unsafe_allow_html=True)
 
 def load_html(file_name):
     """Lädt die HTML Datei sicher ein."""
